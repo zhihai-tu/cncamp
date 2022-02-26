@@ -5,16 +5,21 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"runtime"
 
 	"net/http/pprof"
 
 	"github.com/golang/glog"
+	"github.com/thinkeridea/go-extend/exnet"
 )
 
 func main() {
-	flag.Set("v", "4")
+
+	//flag.Set("v", "4")
+	//flag.Set("log_dir", "log")
+	flag.Parse()
 	glog.V(2).Info("Starting http server...")
 
 	mux := http.NewServeMux()
@@ -54,5 +59,28 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, fmt.Sprintf("GOVERSION=%s\n", runtime.Version()))
 
 	//Server 端记录访问日志包括客户端 IP，HTTP 返回码，输出到 server 端的标准输出
+	glog.V(2).Info("The Client IP is : ", RemoteIp(r))
+	w.WriteHeader(200)
+	glog.V(2).Info("Http retcode is : ", 200)
+}
 
+func RemoteIp(req *http.Request) string {
+	remoteAddr := req.RemoteAddr
+	if ip := exnet.ClientPublicIP(req); ip != "" {
+		remoteAddr = ip
+	} else if ip := exnet.ClientIP(req); ip != "" {
+		remoteAddr = ip
+	} else if ip := req.Header.Get("X-Real-IP"); ip != "" {
+		remoteAddr = ip
+	} else if ip = req.Header.Get("X-Forwarded-For"); ip != "" {
+		remoteAddr = ip
+	} else {
+		remoteAddr, _, _ = net.SplitHostPort(remoteAddr)
+	}
+
+	if remoteAddr == "::1" {
+		remoteAddr = "127.0.0.1"
+	}
+
+	return remoteAddr
 }
