@@ -8,8 +8,6 @@ import (
 	"runtime"
 
 	"net/http/pprof"
-
-	"github.com/thinkeridea/go-extend/exnet"
 )
 
 func main() {
@@ -60,11 +58,7 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 
 func RemoteIp(req *http.Request) string {
 	remoteAddr := req.RemoteAddr
-	if ip := exnet.ClientPublicIP(req); ip != "" {
-		remoteAddr = ip
-	} else if ip := exnet.ClientIP(req); ip != "" {
-		remoteAddr = ip
-	} else if ip := req.Header.Get("X-Real-IP"); ip != "" {
+	if ip := req.Header.Get("X-Real-IP"); ip != "" {
 		remoteAddr = ip
 	} else if ip = req.Header.Get("X-Forwarded-For"); ip != "" {
 		remoteAddr = ip
