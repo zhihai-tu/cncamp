@@ -1,9 +1,7 @@
 package main
 
 import (
-	"flag"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"net/http"
@@ -11,16 +9,10 @@ import (
 
 	"net/http/pprof"
 
-	"github.com/golang/glog"
 	"github.com/thinkeridea/go-extend/exnet"
 )
 
 func main() {
-
-	//flag.Set("v", "4")
-	//flag.Set("log_dir", "log")
-	flag.Parse()
-	glog.V(2).Info("Starting http server...")
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", rootHandler)
@@ -36,32 +28,34 @@ func main() {
 	}
 }
 
-//当访问 localhost/healthz 时，应返回 200
+//4、当访问 localhost/healthz 时，应返回 200
 func healthz(w http.ResponseWriter, r *http.Request) {
-	io.WriteString(w, "200\n")
+	fmt.Fprintf(w, "system is working... httpcode: %d \n", 200)
 }
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("entering root handler")
-	user := r.URL.Query().Get("user")
-	if user != "" {
-		io.WriteString(w, fmt.Sprintf("hello [%s]\n", user))
-	} else {
-		io.WriteString(w, "hello [stranger]\n")
-	}
-	//接收客户端 request，并将 request 中带的 header 写入 response header
-	io.WriteString(w, "===================Details of the http request header:============\n")
-	for k, v := range r.Header {
-		io.WriteString(w, fmt.Sprintf("%s=%s\n", k, v))
-	}
-	//读取当前系统的环境变量中的 VERSION 配置，并写入 response header
-	io.WriteString(w, "===================Details of the env of Go:============\n")
-	io.WriteString(w, fmt.Sprintf("GOVERSION=%s\n", runtime.Version()))
 
-	//Server 端记录访问日志包括客户端 IP，HTTP 返回码，输出到 server 端的标准输出
-	glog.V(2).Info("The Client IP is : ", RemoteIp(r))
-	w.WriteHeader(200)
-	glog.V(2).Info("Http retcode is : ", 200)
+	//1、接收客户端 request，并将 request 中带的 header 写入 response header
+	for k, v := range r.Header {
+		for _, vv := range v {
+			fmt.Printf("Header key: %s, value: %s \n", k, vv)
+			w.Header().Set(k, vv)
+		}
+	}
+
+	//2、读取当前系统的环境变量中的 VERSION 配置，并写入 response header
+	version := runtime.Version()
+	//version := os.Getenv("GOVERSION") //TODO:为什么不行？
+	//path := os.Getenv("GOPATH")
+	//fmt.Printf("PATH: %s \n", path)	//OK
+	fmt.Printf("VERSION: %s \n", version)
+	w.Header().Set("version", version)
+
+	//3、Server 端记录访问日志包括客户端 IP，HTTP 返回码，输出到 server 端的标准输出
+	clientIp := RemoteIp(r)
+	retCode := 200
+	log.Printf("Clientip: %s \n", clientIp)
+	log.Printf("Http Return Code: %d", retCode)
 }
 
 func RemoteIp(req *http.Request) string {
