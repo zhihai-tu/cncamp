@@ -40,7 +40,9 @@ Events:
 ```
 
 由于安装在腾讯云服务器上，因此找到了腾讯云的Docker加速配置
-```
+```sh
+vi /etc/docker/daemon.json
+
 {
   "registry-mirrors": ["https://mirror.ccs.tencentyun.com"]
 }
