@@ -12,6 +12,7 @@ journalctl -f -u kubelet
 
 发现namespance为tigera-operator的pod失败了，describe看了下，原来是docker pull超时出错了
 ```shell
+## 获取namespace
 ubuntu@VM-4-4-ubuntu:~$ k get ns
 NAME               STATUS   AGE
 default            Active   108m
@@ -19,6 +20,7 @@ kube-node-lease    Active   108m
 kube-public        Active   108m
 kube-system        Active   108m
 tigera-operator    Active   106m
+## 获取namespace=tigera-operator的pod
 ubuntu@VM-4-4-ubuntu:~$ k -n tigera-operator get pod
 NAME                              READY   STATUS    RESTARTS      AGE
 tigera-operator-b876f5799-4l625   0/1     Failed   1 (50m ago)   106m
@@ -48,6 +50,28 @@ vi /etc/docker/daemon.json
 }
 ```
 具体可以查看如下文档：https://cloud.tencent.com/developer/article/1151242?from=15425
+
+## 补充知识点
+
+获取node节点信息
+```sh
+ubuntu@VM-4-4-ubuntu:~$ k get no
+NAME            STATUS   ROLES                  AGE    VERSION
+vm-4-4-ubuntu   Ready    control-plane,master   4d5h   v1.23.5
+ubuntu@VM-4-4-ubuntu:~$ k get no --show-labels
+NAME            STATUS   ROLES                  AGE    VERSION   LABELS
+vm-4-4-ubuntu   Ready    control-plane,master   4d5h   v1.23.5   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=vm-4-4-ubuntu,kubernetes.io/os=linux,node-role.kubernetes.io/control-plane=,node-role.kubernetes.io/master=,node.kubernetes.io/exclude-from-external-load-balancers=
+```
+
+为节点添加label
+```sh
+ubuntu@VM-4-4-ubuntu:~$ k label no vm-4-4-ubuntu disktype=ssd
+node/vm-4-4-ubuntu labeled
+ubuntu@VM-4-4-ubuntu:~$ k get no --show-labels
+NAME            STATUS   ROLES                  AGE    VERSION   LABELS
+vm-4-4-ubuntu   Ready    control-plane,master   4d5h   v1.23.5   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,disktype=ssd,kubernetes.io/arch=amd64,kubernetes.io/hostname=vm-4-4-ubuntu,kubernetes.io/os=linux,node-role.kubernetes.io/control-plane=,node-role.kubernetes.io/master=,node.kubernetes.io/exclude-from-external-load-balancers=
+```
+
 
 
 
