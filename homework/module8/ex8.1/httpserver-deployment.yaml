@@ -70,6 +70,15 @@ spec:
             configMapKeyRef:
               key: httpport
               name: myenv1
+        # 日志级别
+        volumeMounts:
+        - name: http-config
+          mountPath: "/"
+          readOnly: true
+      volumes:
+      - name: http-config
+        configMap:
+          name: myenv
       dnsPolicy: ClusterFirst
       imagePullSecrets:
         - name: cloudnative
