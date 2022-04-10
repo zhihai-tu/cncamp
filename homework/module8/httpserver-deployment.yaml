@@ -24,7 +24,7 @@ spec:
         app: httpserver
     spec:
       containers:
-      - image: tuzhihai1986/httpserver:v2.0
+      - image: tuzhihai1986/httpserver:v3.0
         imagePullPolicy: IfNotPresent
         name: httpserver
         # 资源需求和 QoS 保证
@@ -41,7 +41,7 @@ spec:
           valueFrom:
             configMapKeyRef:
               key: httpport
-              name: myenv
+              name: myenv1
       dnsPolicy: ClusterFirst
       imagePullSecrets:
         - name: cloudnative
