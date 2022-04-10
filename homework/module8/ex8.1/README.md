@@ -60,7 +60,6 @@ resources:
     cpu: 20m
     memory: 20Mi
 ```
-### 日常运维需求、日志等级
 
 ### 配置代码分离（重点示例）
 * 实现功能：将httpserver的端口定义在配置文件中
@@ -182,4 +181,37 @@ ubuntu@VM-4-4-ubuntu:~$ curl 192.168.182.207/healthz
 curl: (7) Failed to connect to 192.168.182.207 port 80: Connection refused
 ubuntu@VM-4-4-ubuntu:~$ curl 192.168.182.207:8080/healthz
 system is working... httpcode: 200 
+```
+### 日常运维需求、日志等级（重点示例）
+* 实现功能：app.properties文件中定了glog日志的保存路径和日志等级
+* 实现思路：将app.properties（整个文件）创建为configmap，ymal文件中将其mount到容器内，容器内的go程序会去读取配置文件，根据配置文件中的保存路径和日志等级来记录日志
+* 实现步骤  
+根据app.properties（loglevel=5,logpath=gologs）来创建configmap
+```sh
+ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module8/ex8.1$ k create cm myenv --from-file=app.properties
+configmap/myenv created
+ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module8/ex8.1$ k get cm myenv -oyaml
+apiVersion: v1
+data:
+  app.properties: |-
+    loglevel=5
+    logpath=gologs
+kind: ConfigMap
+metadata:
+  creationTimestamp: "2022-04-10T13:35:17Z"
+  name: myenv
+  namespace: default
+  resourceVersion: "2864505"
+  uid: de198c7f-d3d0-411f-a419-7d36de04441c
+```
+将配置文件挂载到容器内的根目录下，yaml文件片段如下：
+```
+  volumeMounts:
+  - name: http-config
+    mountPath: "/"
+    readOnly: true
+volumes:
+- name: http-config
+  configMap:
+    name: myenv
 ```

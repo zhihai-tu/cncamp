@@ -8,6 +8,7 @@ ENV GO111MODULE=off \
 RUN go build -o httpserver .
 
 FROM scratch
-COPY --from=build /app/httpserver /
+WORKDIR /app/
+COPY --from=build /app/httpserver .
 EXPOSE 80
-ENTRYPOINT ["/httpserver"]
+ENTRYPOINT ["httpserver"]
