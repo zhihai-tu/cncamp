@@ -1,6 +1,6 @@
 FROM golang:1.17 AS build 
 WORKDIR /app/
-COPY main.go go.mod go.sum .
+COPY main.go go.mod go.sum ./
 ENV GO111MODULE=on \
     CGO_ENABLED=0 \	
     GOOS=linux \	
