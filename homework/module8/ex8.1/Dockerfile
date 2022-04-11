@@ -8,7 +8,7 @@ ENV GO111MODULE=on \
     GOPROXY=https://goproxy.cn,direct
 RUN go build -o httpserver .
 
-FROM scratch
+FROM busybox
 COPY --from=build /app/httpserver .
 EXPOSE 80
 ENTRYPOINT ["/httpserver"]
