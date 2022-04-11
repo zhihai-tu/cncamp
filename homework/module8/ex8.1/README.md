@@ -208,7 +208,7 @@ metadata:
 ```
   volumeMounts:
   - name: http-config
-    mountPath: "/"
+    mountPath: "/app"
     readOnly: true
 volumes:
 - name: http-config

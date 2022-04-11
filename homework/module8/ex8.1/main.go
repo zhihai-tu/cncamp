@@ -22,7 +22,7 @@ func main() {
 	logpath := "log"
 
 	//读取配置文件，设置glog的level
-	config := InitConfig("app.properties")
+	config := InitConfig("config/app.properties")
 
 	if config != nil {
 		loglevel = config["loglevel"]
