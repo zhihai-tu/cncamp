@@ -18,10 +18,16 @@ import (
 func main() {
 
 	glog.MaxSize = 1024 * 1024 * 20 // 20M自动分割
+	loglevel := "3"
+	logpath := "log"
+
 	//读取配置文件，设置glog的level
 	config := InitConfig("app.properties")
-	loglevel := config["loglevel"]
-	logpath := config["logpath"]
+
+	if config != nil {
+		loglevel = config["loglevel"]
+		logpath = config["logpath"]
+	}
 
 	flag.Set("log_dir", logpath)
 	flag.Set("alsologtostderr", "true")
@@ -114,13 +120,14 @@ func InitConfig(path string) map[string]string {
 	config := make(map[string]string)
 
 	f, err := os.Open(path)
-	if err != nil {
+	if f != nil {
 		defer f.Close()
+	} else {
+		return nil
 	}
 	if err != nil {
 		panic(err)
 	}
-
 	r := bufio.NewReader(f)
 	for {
 		b, _, err := r.ReadLine()
