@@ -186,35 +186,7 @@ system is working... httpcode: 200
 * 实现功能：app.properties文件中定了glog日志的保存路径和日志等级
 * 实现思路：将app.properties（整个文件）创建为configmap，ymal文件中将其mount到容器内，容器内的go程序会去读取配置文件，根据配置文件中的保存路径和日志等级来记录日志
 * 实现步骤  
-根据app.properties（loglevel=5,logpath=gologs）来创建configmap
-```sh
-ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module8/ex8.1$ k create cm myenv --from-file=app.properties
-configmap/myenv created
-ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module8/ex8.1$ k get cm myenv -oyaml
-apiVersion: v1
-data:
-  app.properties: |-
-    loglevel=5
-    logpath=gologs
-kind: ConfigMap
-metadata:
-  creationTimestamp: "2022-04-10T13:35:17Z"
-  name: myenv
-  namespace: default
-  resourceVersion: "2864505"
-  uid: de198c7f-d3d0-411f-a419-7d36de04441c
-```
-将配置文件挂载到容器内的根目录下，yaml文件片段如下：
-```
-  volumeMounts:
-  - name: http-config
-    mountPath: "/app"
-    readOnly: true
-volumes:
-- name: http-config
-  configMap:
-    name: myenv
-```
+
 修改go程序,将日志改为glog记录日志
 ```go
 func main() {
@@ -244,3 +216,91 @@ func main() {
   glog.V(3).Infof("system is working... httpcode: %d \n", 200)
 ```
 然后重新制作镜像并上传仓库
+
+根据app.properties（loglevel=5,logpath=gologs）来创建configmap
+```sh
+ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module8/ex8.1$ k create cm myenv --from-file=app.properties
+configmap/myenv created
+ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module8/ex8.1$ k get cm myenv -oyaml
+apiVersion: v1
+data:
+  app.properties: |-
+    loglevel=5
+    logpath=gologs
+kind: ConfigMap
+metadata:
+  creationTimestamp: "2022-04-10T13:35:17Z"
+  name: myenv
+  namespace: default
+  resourceVersion: "2864505"
+  uid: de198c7f-d3d0-411f-a419-7d36de04441c
+```
+将配置文件挂载到容器内的根目录下，yaml文件片段如下：
+```
+  volumeMounts:
+  - name: http-config
+    mountPath: "/app"
+    readOnly: true
+volumes:
+- name: http-config
+  configMap:
+    name: myenv
+```
+重建deployment
+```sh
+ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module8/ex8.1$ k replace -f httpserver-deployment.yaml 
+deployment.apps/httpserver replaced
+```
+观察pod状态变化，滚动升级成功
+```sh
+ubuntu@VM-4-4-ubuntu:~$ k get po -w
+NAME                          READY   STATUS    RESTARTS   AGE
+httpserver                    1/1     Running   0          47h
+httpserver-76d47f79cb-b5djv   1/1     Running   0          22m
+httpserver-76d47f79cb-cj2wz   1/1     Running   0          22m
+httpserver-8588c7fd96-hr292   0/1     Pending   0          0s
+httpserver-8588c7fd96-hr292   0/1     Pending   0          0s
+httpserver-8588c7fd96-hr292   0/1     ContainerCreating   0          0s
+httpserver-8588c7fd96-hr292   0/1     ContainerCreating   0          1s
+httpserver-8588c7fd96-hr292   0/1     Running             0          11s
+httpserver-8588c7fd96-hr292   1/1     Running             0          20s
+httpserver-76d47f79cb-b5djv   1/1     Terminating         0          23m
+httpserver-8588c7fd96-8p67z   0/1     Pending             0          0s
+httpserver-8588c7fd96-8p67z   0/1     Pending             0          0s
+httpserver-8588c7fd96-8p67z   0/1     ContainerCreating   0          0s
+httpserver-8588c7fd96-8p67z   0/1     ContainerCreating   0          1s
+httpserver-8588c7fd96-8p67z   0/1     Running             0          1s
+httpserver-76d47f79cb-b5djv   1/1     Terminating         0          23m
+httpserver-76d47f79cb-b5djv   0/1     Terminating         0          23m
+httpserver-76d47f79cb-b5djv   0/1     Terminating         0          23m
+httpserver-76d47f79cb-b5djv   0/1     Terminating         0          23m
+httpserver-8588c7fd96-8p67z   1/1     Running             0          10s
+```
+测试httpserver
+```sh
+ubuntu@VM-4-4-ubuntu:~$ curl 192.168.182.242:8080/healthz
+<html h1>system is working... httpcode: 200 </html>ubuntu@VM-4-4-ubuntu:~$ 
+```
+进入到容器中观察配置文件
+```sh
+ubuntu@VM-4-4-ubuntu:~$ k exec -it httpserver-8588c7fd96-8p67z -- sh
+/ # ls
+bin         dev         gologs      httpserver  root        tmp         var
+config      etc         home        proc        sys         usr
+/ # cd config/
+/config # ls
+app.properties
+/config # cat app.properties 
+loglevel=5
+logpath=gologs
+```
+观察日志文件，与配置文件中定义的路径匹配。观察日志，记录的日志级别也与配置文件中定义的级别相符。
+```
+/ # ls
+bin         dev         gologs      httpserver  root        tmp         var
+config      etc         home        proc        sys         usr
+/ # cd gologs/
+/gologs # ls
+httpserver.INFO
+httpserver.httpserver-8588c7fd96-8p67z.root.log.INFO.20220411-072811.1
+```
