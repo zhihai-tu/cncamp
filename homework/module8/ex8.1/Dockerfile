@@ -5,6 +5,7 @@ ENV GO111MODULE=on \
     CGO_ENABLED=0 \	
     GOOS=linux \	
     GOARCH=amd64
+    GOPROXY=https://goproxy.cn,direct
 RUN go build -o httpserver .
 
 FROM scratch
