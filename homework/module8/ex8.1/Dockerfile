@@ -12,4 +12,4 @@ FROM scratch
 WORKDIR /app/
 COPY --from=build /app/httpserver .
 EXPOSE 80
-ENTRYPOINT ["httpserver"]
+ENTRYPOINT ["./httpserver"]
