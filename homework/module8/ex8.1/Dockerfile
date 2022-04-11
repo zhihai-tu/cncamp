@@ -1,7 +1,7 @@
 FROM golang:1.17 AS build 
 WORKDIR /app/
-COPY main.go .
-ENV GO111MODULE=off \
+COPY main.go go.mod go.sum .
+ENV GO111MODULE=on \
     CGO_ENABLED=0 \	
     GOOS=linux \	
     GOARCH=amd64
