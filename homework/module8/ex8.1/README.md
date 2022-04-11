@@ -215,3 +215,32 @@ volumes:
   configMap:
     name: myenv
 ```
+修改go程序,将日志改为glog记录日志
+```go
+func main() {
+
+	glog.MaxSize = 1024 * 1024 * 20 // 20M自动分割
+	//读取配置文件，设置glog的level
+	config := InitConfig("app.properties")
+	loglevel := config["loglevel"]
+	logpath := config["logpath"]
+
+	flag.Set("log_dir", logpath)
+	flag.Set("alsologtostderr", "true")
+	flag.Set("v", loglevel)
+	flag.Parse()
+	defer glog.Flush()
+
+	pathFlag, pathErr := PathExists(logpath)
+	if !pathFlag {
+		glog.Error(pathErr)
+	}
+```
+在程序中按需设置不同的日志级别
+```go
+	glog.V(5).Infof("GET ENV: HTTP_PORT=%s", httpport)
+```
+```go
+  glog.V(3).Infof("system is working... httpcode: %d \n", 200)
+```
+然后重新制作镜像并上传仓库
