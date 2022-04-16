@@ -76,15 +76,26 @@ ubuntu@VM-4-4-ubuntu:~$ curl 10.0.4.4:31322
 ```
 
 ### ingress
-安装helm
-```sh
-curl https://baltocdn.com/helm/signing.asc | sudo apt-key add -
-sudo apt-get install apt-transport-https --yes
-echo "deb https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
-sudo apt-get update
-sudo apt-get install helm
-```
 安装ingress
 ```sh
-
+k create -f nginx-ingress-deployment.yaml
 ```
+注意点：  
+一、查看文件nginx-ingress-deployment.yaml，将以下两个镜像中的@sha开头的内容去掉：
+1. k8s.gcr.io/ingress-nginx/controller:v1.0.0@sha256:0851b34f69f69352bf168e6ccf30e1e20714a264ab1ecd1933e4d8c0fc3215c6
+2. k8s.gcr.io/ingress-nginx/kube-webhook-certgen:v1.0@sha256:f3b6b39a6062328c095337b4cadcefd1612348fdd5190b1dcbcb9b9e90bd8068
+二、由于无法下载k8s.gcr.io镜像，需要下载国内镜像源中下载，然后在修改tag，操作如下：
+```sh
+root@VM-4-4-ubuntu:~# crictl pull liangjw/kube-webhook-certgen:v1.0
+Image is up to date for sha256:17e55ec30f203e6acb1e2d35bf8af5e171b3734539e1d2b560c8e80f6b1b259a
+root@VM-4-4-ubuntu:~# ctr -n k8s.io i tag docker.io/liangjw/kube-webhook-certgen:v1.0 k8s.gcr.io/ingress-nginx/kube-webhook-certgen:v1.0
+k8s.gcr.io/ingress-nginx/kube-webhook-certgen:v1.0
+root@VM-4-4-ubuntu:~# crictl pull liangjw/ingress-nginx-controller:v1.0.0
+Image is up to date for sha256:ef43679c2cae7c3812814f91faa4c76de95152daa9dc6f52836f6262946f5825
+root@VM-4-4-ubuntu:~# ctr -n k8s.io i tag docker.io/liangjw/ingress-nginx-controller:v1.0.0 k8s.gcr.io/ingress-nginx/controller:v1.0.0
+k8s.gcr.io/ingress-nginx/controller:v1.0.0
+root@VM-4-4-ubuntu:~# crictl images --digests| grep k8s.gcr.io
+k8s.gcr.io/ingress-nginx/controller                               v1.0.0              0851b34f69f69       ef43679c2cae7       103MB
+k8s.gcr.io/ingress-nginx/kube-webhook-certgen                     v1.0                f3b6b39a60623       17e55ec30f203       18.6MB
+```
+
