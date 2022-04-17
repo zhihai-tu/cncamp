@@ -111,7 +111,7 @@ pangser/kube-webhook-certgen                                                    
 catalystcloud/kube-webhook-certgen                                                   0                    
 ```
 或者可以登录dockerhub页面后，进行搜索，如下图
-![](https://github.com/zhihai-tu/cncamp/blob/main/homework/module8/ex8.2/dockerhub-search.jpg)
+![dockerhub](https://github.com/zhihai-tu/cncamp/blob/main/homework/module8/ex8.2/dockerhub-search.jpg)
 
 选定国内镜像后，使用crictl pull命令进行下载
 ```sh
