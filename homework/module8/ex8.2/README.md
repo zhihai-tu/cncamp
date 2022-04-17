@@ -13,6 +13,7 @@ Ingress
 截止日期：2022 年 4 月 17 日 23:59  
 
 ## 作业解答
+[前序作业](https://github.com/zhihai-tu/cncamp/tree/main/homework/module8/ex8.1)
 ### Service
 新建httpserver-service.yaml
 ```sh
