@@ -90,10 +90,10 @@ httpserver-8588c7fd96-hr292   1/1     Running   0          5d22h
 k create -f nginx-ingress-deployment.yaml
 ```
 注意点：  
-一、查看文件nginx-ingress-deployment.yaml，将以下两个镜像中的@sha开头的内容去掉：
-1. k8s.gcr.io/ingress-nginx/controller:v1.0.0@sha256:0851b34f69f69352bf168e6ccf30e1e20714a264ab1ecd1933e4d8c0fc3215c6
-2. k8s.gcr.io/ingress-nginx/kube-webhook-certgen:v1.0@sha256:f3b6b39a6062328c095337b4cadcefd1612348fdd5190b1dcbcb9b9e90bd8068  
-二、由于无法下载k8s.gcr.io镜像，需要下载国内镜像源中下载，然后在修改tag，操作如下：  
+1. 查看文件nginx-ingress-deployment.yaml，将以下两个镜像中的@sha开头的内容去掉：
+   + k8s.gcr.io/ingress-nginx/controller:v1.0.0@sha256:0851b34f69f69352bf168e6ccf30e1e20714a264ab1ecd1933e4d8c0fc3215c6
+   + k8s.gcr.io/ingress-nginx/kube-webhook-certgen:v1.0@sha256:f3b6b39a6062328c095337b4cadcefd1612348fdd5190b1dcbcb9b9e90bd8068     
+2. 由于无法下载k8s.gcr.io镜像，需要下载国内镜像源中下载，然后在修改tag，操作如下：  
 查询国内镜像源，可以使用docker search命令
 ```sh
 root@VM-4-4-ubuntu:~# docker search kube-webhook-certgen
