@@ -74,6 +74,14 @@ ubuntu@VM-4-4-ubuntu:~$ curl 10.0.4.4:31322
 <html h1>Welcome to cncamp...</html>ubuntu@VM-4-4-ubuntu:~$ curl 10.0.4.4:31322/healthz
 <html h1>system is working... httpcode: 200 </html>ubuntu@VM-4-4-ubuntu:~$ 
 ```
+### 应用高可用
+httpserver的pod有两个副本，保证了高可用
+```sh
+ubuntu@VM-4-4-ubuntu:~$ k get po
+NAME                          READY   STATUS    RESTARTS   AGE
+httpserver-8588c7fd96-8p67z   1/1     Running   0          5d22h
+httpserver-8588c7fd96-hr292   1/1     Running   0          5d22h
+```
 
 ### ingress
 安装ingress
@@ -83,7 +91,7 @@ k create -f nginx-ingress-deployment.yaml
 注意点：  
 一、查看文件nginx-ingress-deployment.yaml，将以下两个镜像中的@sha开头的内容去掉：
 1. k8s.gcr.io/ingress-nginx/controller:v1.0.0@sha256:0851b34f69f69352bf168e6ccf30e1e20714a264ab1ecd1933e4d8c0fc3215c6
-2. k8s.gcr.io/ingress-nginx/kube-webhook-certgen:v1.0@sha256:f3b6b39a6062328c095337b4cadcefd1612348fdd5190b1dcbcb9b9e90bd8068
+2. k8s.gcr.io/ingress-nginx/kube-webhook-certgen:v1.0@sha256:f3b6b39a6062328c095337b4cadcefd1612348fdd5190b1dcbcb9b9e90bd8068  
 二、由于无法下载k8s.gcr.io镜像，需要下载国内镜像源中下载，然后在修改tag，操作如下：  
 查询国内镜像源，可以使用docker search命令
 ```sh
@@ -134,6 +142,56 @@ ingress-nginx-admission-create-wzx6p       0/1     Completed   0          11h
 ingress-nginx-admission-patch-5kszv        0/1     Completed   1          11h
 ingress-nginx-controller-fd8b8b55b-7xklw   1/1     Running     0          11h
 ```
+新建一个ingress网关
+```sh
+ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module8/ex8.2$ kubectl create -f ingress-http.yaml
+ingress.networking.k8s.io/gateway created
+
+ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module8/ex8.2$ k get ing
+NAME      CLASS   HOSTS   ADDRESS    PORTS   AGE
+gateway   nginx   *       10.0.4.4   80      74s
+```
+查看ingress，已经按照规则绑定了backends后端服务
+```sh 
+ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module8/ex8.2$ k describe ing gateway
+Name:             gateway
+Labels:           <none>
+Namespace:        default
+Address:          10.0.4.4
+Default backend:  default-http-backend:80 (<error: endpoints "default-http-backend" not found>)
+Rules:
+  Host        Path  Backends
+  ----        ----  --------
+  *           
+              /   httpserver:80 (192.168.182.241:8080,192.168.182.242:8080)
+Annotations:  <none>
+Events:
+  Type    Reason  Age                 From                      Message
+  ----    ------  ----                ----                      -------
+  Normal  Sync    48s (x2 over 103s)  nginx-ingress-controller  Scheduled for sync
+```
+通过ingress的service进行访问
+```sh
+ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module8/ex8.2$ k get svc  -n ingress-nginx
+NAME                                 TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                      AGE
+ingress-nginx-controller             NodePort    10.103.35.254   <none>        80:30576/TCP,443:32200/TCP   112m
+ingress-nginx-controller-admission   ClusterIP   10.108.78.3     <none>        443/TCP                      112m
+```
+通过ingress的入口进行访问，先把请求转到ingress的pod中去，然后通过ingress pod的转发规则（上述getway)再转到httpservice的pod中去。
+```sh
+ubuntu@VM-4-4-ubuntu:~$ curl 10.103.35.254
+<html h1>Welcome to cncamp...</html>
+ubuntu@VM-4-4-ubuntu:~$ curl localhost:30576
+<html h1>Welcome to cncamp...</html>
+```
+问题：为什么curl 10.103.35.254/healthz没有返回结果？
+```sh
+ubuntu@VM-4-4-ubuntu:~$ curl 10.103.35.254/healthz
+ubuntu@VM-4-4-ubuntu:~$ curl 10.103.35.254/healthz
+ubuntu@VM-4-4-ubuntu:~$ curl 10.103.35.254/healthz
+```
+
+### 通过证书保证 httpServer 的通讯安全
 签发域名为cncamp.com的证书
 ```sh
 ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module8/ex8.2$ openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout tls.key -out tls.crt -subj "/CN=cncamp.com/O=cncamp" -addext "subjectAltName = DNS:cncamp.com"
@@ -152,26 +210,20 @@ NAME                  TYPE                                  DATA   AGE
 cncamp-tls            kubernetes.io/tls                     2      16s
 default-token-zmnx9   kubernetes.io/service-account-token   3      21d
 ```
-新建一个网关(引用刚才创建的secret)
+更新ingress，加入域名及https认证配置
 ```sh
-ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module8/ex8.2$ kubectl create -f ingress.yaml
-ingress.networking.k8s.io/gateway created
-ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module8/ex8.2$ k get ing
-NAME      CLASS    HOSTS        ADDRESS    PORTS     AGE
-gateway   <none>   cncamp.com   10.0.4.4   80, 443   45s
-```
-通过ingress的service进行方案
-```sh
-ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module8/ex8.2$ k get svc  -n ingress-nginx
-NAME                                 TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                      AGE
-ingress-nginx-controller             NodePort    10.103.35.254   <none>        80:30576/TCP,443:32200/TCP   112m
-ingress-nginx-controller-admission   ClusterIP   10.108.78.3     <none>        443/TCP                      112m
+ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module8/ex8.2$ k replace -f ingress-https.yaml 
+ingress.networking.k8s.io/gateway replaced
 ```
 通过ingress的入口，先把请求转到ingress的pod中去，然后通过ingress pod的转发规则（上述getway)再转到httpservice的pod中去。
 ```sh
 ubuntu@VM-4-4-ubuntu:~$ curl -H "Host: cncamp.com" https://10.103.35.254 -k
 <html h1>Welcome to cncamp...</html>
-ubuntu@VM-4-4-ubuntu:~$ curl -H "Host: cncamp.com" https://10.103.35.254/healtyz -k
-<html h1>Welcome to cncamp...</html>
+ubuntu@VM-4-4-ubuntu:~$ curl -H "Host: cncamp.com" https://10.103.35.254/healthz -k
+<html h1>system is working... httpcode: 200 </html>
 ```
-
+问题：为什么不能通过nodeport的https进行访问？
+```sh
+ubuntu@VM-4-4-ubuntu:~$ curl -H "Host: cncamp.com" https://localhost:30576 -k
+curl: (35) error:1408F10B:SSL routines:ssl3_get_record:wrong version number
+```
