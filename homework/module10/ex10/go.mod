@@ -1,4 +1,4 @@
-module homework/module10
+module httpserver
 
 go 1.17
 

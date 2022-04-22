@@ -27,9 +27,11 @@ spec:
         app: httpserver
     spec:
       containers:
-      - image: tuzhihai1986/httpserver:v3.0.1
+      - image: tuzhihai1986/httpserver:v3.0.1-metrics
         imagePullPolicy: IfNotPresent
         name: httpserver
+        ports: 
+          - containerPort: 80
         # 优雅启动、探活
         livenessProbe:
           failureThreshold: 3
