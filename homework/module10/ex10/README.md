@@ -41,6 +41,38 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 }
 ```
 ### STEP3.将 HTTPServer 部署至测试集群，并完成 Prometheus 配置；
+#### 安装Prometheus
+1. 参考如下安装教程，安装loki-stack：https://github.com/cncamp/101/tree/master/module10/loki-stack  
+2. 如果image无法下载，手工docker pull后修改tag解决
+3. 查看pod和service
+```sh
+cadmin@k8snode:~$ k get po
+NAME                                            READY   STATUS    RESTARTS        AGE
+loki-0                                          1/1     Running   1 (6m56s ago)   179m
+loki-grafana-866d588467-nsvdh                   2/2     Running   4 (6m56s ago)   38m
+loki-kube-state-metrics-5d666fbb55-vk9q9        1/1     Running   1 (6m56s ago)   143m
+loki-prometheus-alertmanager-649cc4f455-gjp87   2/2     Running   5 (6m56s ago)   179m
+loki-prometheus-node-exporter-c9n9k             1/1     Running   3 (6m56s ago)   179m
+loki-prometheus-pushgateway-575b7f6bfd-7n7v7    1/1     Running   3 (6m56s ago)   179m
+loki-prometheus-server-b4c6f96bd-xz7rv          2/2     Running   5 (6m56s ago)   179m
+loki-promtail-26cwm                             1/1     Running   0               179m
+
+cadmin@k8snode:~$ k get svc
+NAME                            TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)           AGE
+envoy                           NodePort    10.97.219.161    <none>        10008:32565/TCP   36d
+kubernetes                      ClusterIP   10.96.0.1        <none>        443/TCP           39d
+loki                            ClusterIP   10.104.210.40    <none>        3100/TCP          179m
+loki-grafana                    NodePort    10.106.221.30    <none>        80:32733/TCP      179m
+loki-headless                   ClusterIP   None             <none>        3100/TCP          179m
+loki-kube-state-metrics         ClusterIP   10.105.87.141    <none>        8080/TCP          179m
+loki-prometheus-alertmanager    ClusterIP   10.111.236.91    <none>        80/TCP            179m
+loki-prometheus-node-exporter   ClusterIP   None             <none>        9100/TCP          179m
+loki-prometheus-pushgateway     ClusterIP   10.98.85.77      <none>        9091/TCP          179m
+loki-prometheus-server          ClusterIP   10.103.103.103   <none>        80/TCP            179m
+```
+4. loki-grafana修改为NodePort，可正常打开grafana的网页
+
+#### 部署应用
 制作镜像
 ```sh
 [root@iZuf6hgwe067pstqgg2aj7Z ex10]# docker build -t tuzhihai1986/httpserver:v3.0.1-metrics .
