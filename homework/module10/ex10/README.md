@@ -73,7 +73,7 @@ loki-prometheus-server          ClusterIP   10.103.103.103   <none>        80/TC
 4. loki-grafana修改为NodePort，可正常打开grafana的网页
 
 #### 部署应用
-制作镜像
+1. 制作镜像
 ```sh
 [root@iZuf6hgwe067pstqgg2aj7Z ex10]# docker build -t tuzhihai1986/httpserver:v3.0.1-metrics .
 Sending build context to Docker daemon     64kB
@@ -121,7 +121,7 @@ Removing intermediate container 95a91c03288c
 Successfully built ab7e37dcbc51
 Successfully tagged tuzhihai1986/httpserver:v3.0.1-metrics
 ```
-上传镜像至dockerhub
+2. 上传镜像至dockerhub
 ```sh
 [root@iZuf6hgwe067pstqgg2aj7Z ex10]# docker push tuzhihai1986/httpserver:v3.0.1-metrics
 The push refers to repository [docker.io/tuzhihai1986/httpserver]
@@ -129,14 +129,14 @@ The push refers to repository [docker.io/tuzhihai1986/httpserver]
 252fdf0c3b6a: Mounted from library/busybox 
 v3.0.1-metrics: digest: sha256:72991c66708289e8344e0600baa07dd1a0e5a1df0d108a20b37ca08d4d71ffd6 size: 738
 ```
-修改httpserver-deployment.ymal文件,片段如下（详见注释处）
+3. 修改httpserver-deployment.ymal文件,片段如下（详见注释处）
 ```
   template:
     metadata:
-      ##ex10:定义这个deployment需要汇报指标，通过80端口
+      ##ex10:定义这个deployment需要汇报指标，通过8080端口
       annotations:
         prometheus.io/scrape: "true"
-        prometheus.io/port: "80"
+        prometheus.io/port: "8080"
       creationTimestamp: null
       labels:
         app: httpserver
@@ -145,7 +145,29 @@ v3.0.1-metrics: digest: sha256:72991c66708289e8344e0600baa07dd1a0e5a1df0d108a20b
       - image: tuzhihai1986/httpserver:v3.0.1-metrics
         imagePullPolicy: IfNotPresent
         name: httpserver
-        ##ex10:暴露80端口
+        ##ex10:暴露8080端口
         ports: 
-          - containerPort: 80
+          - containerPort: 8080
 ```
+4. 创建configMap
+```sh
+cadmin@k8snode:~/tuzhihai/module10$ k create cm myenv --from-file=app.properties
+configmap/myenv created
+
+cadmin@k8snode:~/tuzhihai/module10$ k create cm myenv1 --from-env-file=app.properties
+configmap/myenv1 created
+```
+
+5. 创建httpserver
+```sh
+cadmin@k8snode:~/tuzhihai/module10$ k create -f httpserver-deployment.yaml 
+deployment.apps/httpserver created
+
+cadmin@k8snode:~/tuzhihai/module10$ k get po
+NAME                                            READY   STATUS    RESTARTS      AGE
+httpserver-7b44cc8b47-7s8fs                     1/1     Running   0             10s
+httpserver-7b44cc8b47-tzbvh                     1/1     Running   0             10s
+```
+
+
+
