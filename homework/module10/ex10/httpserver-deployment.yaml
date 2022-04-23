@@ -19,6 +19,7 @@ spec:
     type: RollingUpdate
   template:
     metadata:
+      ##ex10:定义这个deployment需要汇报指标，通过80端口
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "80"
@@ -30,6 +31,7 @@ spec:
       - image: tuzhihai1986/httpserver:v3.0.1-metrics
         imagePullPolicy: IfNotPresent
         name: httpserver
+        ##ex10:暴露80端口
         ports: 
           - containerPort: 80
         # 优雅启动、探活

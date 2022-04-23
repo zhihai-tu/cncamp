@@ -18,10 +18,32 @@ delay := randInt(0, 2000)
 time.Sleep(time.Millisecond * time.Duration(delay))
 glog.V(3).Infof("Respond in %d ms", delay)
 ```
+### STEP2.为 HTTPServer 项目添加延时 Metric
+新增metrics.go，定义prometheus采集指标  
+修改main.go程序，增加merics相关内容
+```go
+func main() {
+    ……
+	//ex10-func-02:增加metrics的register，注册prometheus的指标采集器（直方图采集器，采集指标是execution_latency_seconds，详见metrics.go代码
+	metrics.Register()
+    ……
+    //ex10-func-02:/metrics路径注册为prometheus的handler
+	mux.Handle("/metrics", promhttp.Handler())
+    ……
+}
 
+func rootHandler(w http.ResponseWriter, r *http.Request) {
+
+	//ex10-func-02:记录整个函数的执行时间
+	timer := metrics.NewTimer()
+	defer timer.ObserveTotal()
+    ……
+}
+```
+### STEP3.将 HTTPServer 部署至测试集群，并完成 Prometheus 配置；
 制作镜像
 ```sh
-[root@iZuf6hgwe067pstqgg2aj7Z ex10]# docker build -o tuzhihai1986/httpserver:v3.0.1-metrics .
+[root@iZuf6hgwe067pstqgg2aj7Z ex10]# docker build -t tuzhihai1986/httpserver:v3.0.1-metrics .
 Sending build context to Docker daemon     64kB
 Step 1/10 : FROM golang:1.17 AS build
  ---> 0659a535a734
@@ -65,4 +87,33 @@ Step 10/10 : ENTRYPOINT ["/httpserver"]
 Removing intermediate container 95a91c03288c
  ---> ab7e37dcbc51
 Successfully built ab7e37dcbc51
+Successfully tagged tuzhihai1986/httpserver:v3.0.1-metrics
+```
+上传镜像至dockerhub
+```sh
+[root@iZuf6hgwe067pstqgg2aj7Z ex10]# docker push tuzhihai1986/httpserver:v3.0.1-metrics
+The push refers to repository [docker.io/tuzhihai1986/httpserver]
+1b4aab581124: Pushed 
+252fdf0c3b6a: Mounted from library/busybox 
+v3.0.1-metrics: digest: sha256:72991c66708289e8344e0600baa07dd1a0e5a1df0d108a20b37ca08d4d71ffd6 size: 738
+```
+修改httpserver-deployment.ymal文件,片段如下（详见注释处）
+```
+  template:
+    metadata:
+      ##ex10:定义这个deployment需要汇报指标，通过80端口
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "80"
+      creationTimestamp: null
+      labels:
+        app: httpserver
+    spec:
+      containers:
+      - image: tuzhihai1986/httpserver:v3.0.1-metrics
+        imagePullPolicy: IfNotPresent
+        name: httpserver
+        ##ex10:暴露80端口
+        ports: 
+          - containerPort: 80
 ```

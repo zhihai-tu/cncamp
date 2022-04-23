@@ -45,7 +45,9 @@ func main() {
 		glog.Error(pathErr)
 	}
 
+	//ex10-func-02:增加metrics的register，注册prometheus的指标采集器（直方图采集器，采集指标是execution_latency_seconds，详见metrics.go代码
 	metrics.Register()
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", rootHandler)
 	mux.HandleFunc("/healthz", healthz)
@@ -53,7 +55,8 @@ func main() {
 	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
 	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
-	//ex10-func-02:为 HTTPServer 项目添加延时 Metric
+
+	//ex10-func-02:/metrics路径注册为prometheus的handler
 	mux.Handle("/metrics", promhttp.Handler())
 
 	//根据环境变量获取访问端口，默认为80
@@ -78,6 +81,7 @@ func healthz(w http.ResponseWriter, r *http.Request) {
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {
 
+	//ex10-func-02:记录整个函数的执行时间
 	timer := metrics.NewTimer()
 	defer timer.ObserveTotal()
 
