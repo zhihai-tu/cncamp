@@ -80,28 +80,114 @@ ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module12/ex12
 configmap/myenv1 created
 
 ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module12/ex12$ k get cm -n istio-demo
-NAME               DATA   AGE
-kube-root-ca.crt   1      12m
-myenv              1      46s
-myenv1             3      20s
+NAME                 DATA   AGE
+istio-ca-root-cert   1      33s
+kube-root-ca.crt     1      33s
+myenv                1      17s
+myenv1               3      8s
 
 ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module12/ex12$ k create -f httpserver-deployment.yaml -n istio-demo
 deployment.apps/httpserver created
 
 ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module12/ex12$ k get po -n istio-demo -owide
-NAME                          READY   STATUS    RESTARTS   AGE     IP                NODE            NOMINATED NODE   READINESS GATES
-httpserver-7d4bbb44f5-grv98   1/1     Running   0          8m27s   192.168.182.255   vm-4-4-ubuntu   <none>           <none>
-httpserver-7d4bbb44f5-tlstj   1/1     Running   0          8m27s   192.168.182.195   vm-4-4-ubuntu   <none>           <none>
-ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module12/ex12$ curl 192.168.182.255
-curl: (7) Failed to connect to 192.168.182.255 port 80: Connection refused
-ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module12/ex12$ curl 192.168.182.255:8080
+NAME                          READY   STATUS    RESTARTS   AGE   IP                NODE            NOMINATED NODE   READINESS GATES
+httpserver-7d4bbb44f5-fjxrf   1/1     Running   0          52s   192.168.182.204   vm-4-4-ubuntu   <none>           <none>
+httpserver-7d4bbb44f5-wxt77   1/1     Running   0          52s   192.168.182.205   vm-4-4-ubuntu   <none>           <none>
+ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module12/ex12$ curl 192.168.182.204:8080
 <html h1>Welcome to cncamp...</html>
 
 ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module12/ex12$ k create -f httpserver-service.yaml -n istio-demo
 service/httpserver created
 ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module12/ex12$ k get svc -n istio-demo
-NAME         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE
-httpserver   ClusterIP   10.105.91.245   <none>        80/TCP    14s
-ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module12/ex12$ curl 10.105.91.245
+NAME         TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)   AGE
+httpserver   ClusterIP   10.108.170.227   <none>        80/TCP    6s
+ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module12/ex12$ curl 10.108.170.227
 <html h1>Welcome to cncamp...</html>
+```
+创建istio网关
+```sh
+ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module12/ex12$ k create -f istio-specs-http.yaml -n istio-demo
+virtualservice.networking.istio.io/httpserver created
+gateway.networking.istio.io/httpserver created
+```
+```sh
+ubuntu@VM-4-4-ubuntu:~$ k get svc -nistio-system
+NAME                   TYPE           CLUSTER-IP      EXTERNAL-IP   PORT(S)                                                                      AGE
+istio-egressgateway    ClusterIP      10.97.250.7     <none>        80/TCP,443/TCP                                                               4h1m
+istio-ingressgateway   LoadBalancer   10.99.244.113   <pending>     15021:32429/TCP,80:30529/TCP,443:31031/TCP,31400:30496/TCP,15443:30553/TCP   4h1m
+istiod                 ClusterIP      10.104.233.69   <none>        15010/TCP,15012/TCP,443/TCP,15014/TCP                                        4h4m
+
+ubuntu@VM-4-4-ubuntu:~$ curl -H "Host: httpserver.cncamp.io" http://10.99.244.113
+<html h1>Welcome to cncamp...</html>
+```
+
+### Step1:如何实现安全保证——改造为https方式
+```sh
+ubuntu@VM-4-4-ubuntu:~$ kubectl label ns istio-demo istio-injection=enabled
+namespace/istio-demo labeled
+
+ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module12/ex12$ openssl req -x509 -sha256 -nodes -days 365 -newkey rsa:2048 -subj '/O=cncamp Inc./CN=*.cncamp.io' -keyout cncamp.io.key -out cncamp.io.crt
+Generating a RSA private key
+......................................+++++
+.............+++++
+writing new private key to 'cncamp.io.key'
+-----
+ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module12/ex12$ k create -n istio-system secret tls cncamp-credential --key=cncamp.io.key --cert=cncamp.io.crt
+secret/cncamp-credential created
+
+ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module12/ex12$ k create -f istio-specs-https.yaml -n istio-demo
+virtualservice.networking.istio.io/httpsserver created
+gateway.networking.istio.io/httpsserver created
+```
+测试
+```sh
+ubuntu@VM-4-4-ubuntu:~$ curl --resolve httpsserver.cncamp.io:443:$INGRESS_IP https://httpsserver.cncamp.io/healthz -v -k
+* Added httpsserver.cncamp.io:443:10.99.244.113 to DNS cache
+* Hostname httpsserver.cncamp.io was found in DNS cache
+*   Trying 10.99.244.113:443...
+* TCP_NODELAY set
+* Connected to httpsserver.cncamp.io (10.99.244.113) port 443 (#0)
+* ALPN, offering h2
+* ALPN, offering http/1.1
+* successfully set certificate verify locations:
+*   CAfile: /etc/ssl/certs/ca-certificates.crt
+  CApath: /etc/ssl/certs
+* TLSv1.3 (OUT), TLS handshake, Client hello (1):
+* TLSv1.3 (IN), TLS handshake, Server hello (2):
+* TLSv1.3 (IN), TLS handshake, Encrypted Extensions (8):
+* TLSv1.3 (IN), TLS handshake, Certificate (11):
+* TLSv1.3 (IN), TLS handshake, CERT verify (15):
+* TLSv1.3 (IN), TLS handshake, Finished (20):
+* TLSv1.3 (OUT), TLS change cipher, Change cipher spec (1):
+* TLSv1.3 (OUT), TLS handshake, Finished (20):
+* SSL connection using TLSv1.3 / TLS_AES_256_GCM_SHA384
+* ALPN, server accepted to use h2
+* Server certificate:
+*  subject: O=cncamp Inc.; CN=*.cncamp.io
+*  start date: May  5 15:05:50 2022 GMT
+*  expire date: May  5 15:05:50 2023 GMT
+*  issuer: O=cncamp Inc.; CN=*.cncamp.io
+*  SSL certificate verify result: self signed certificate (18), continuing anyway.
+* Using HTTP2, server supports multi-use
+* Connection state changed (HTTP/2 confirmed)
+* Copying HTTP/2 data in stream buffer to connection buffer after upgrade: len=0
+* Using Stream ID: 1 (easy handle 0x55d637c3be30)
+> GET /healthz HTTP/2
+> Host: httpsserver.cncamp.io
+> user-agent: curl/7.68.0
+> accept: */*
+> 
+* TLSv1.3 (IN), TLS handshake, Newsession Ticket (4):
+* TLSv1.3 (IN), TLS handshake, Newsession Ticket (4):
+* old SSL session ID is stale, removing
+* Connection state changed (MAX_CONCURRENT_STREAMS == 2147483647)!
+< HTTP/2 200 
+< date: Thu, 05 May 2022 16:26:57 GMT
+< content-length: 51
+< content-type: text/html; charset=utf-8
+< x-envoy-upstream-service-time: 0
+< server: istio-envoy
+< 
+* Connection #0 to host httpsserver.cncamp.io left intact
+<html h1>system is working... httpcode: 200 </html>
 ```

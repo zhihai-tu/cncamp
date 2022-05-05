@@ -1,0 +1,32 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: httpserver2
+spec:
+  gateways:
+    - httpserver2
+  hosts:
+    - httpserver.cncamp.io
+  http:
+    - match:
+        - port: 443
+      route:
+        - destination:
+            host: httpserver.istio-demo.svc.cluster.local
+            port:
+              number: 80
+---
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: httpserver2
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - hosts:
+        - httpserver.cncamp.io
+      port:
+        name: httpserver2
+        number: 443
+        protocol: HTTP
