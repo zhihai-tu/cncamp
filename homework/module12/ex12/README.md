@@ -5,8 +5,7 @@
 3. 考虑 open tracing 的接入。
 
 ## 作业解答
-### 通过Istio Ingress Gateway的形式来发布httpserver
-1. 安装istio
+### STEP1:安装istio
 ```sh
 root@VM-4-4-ubuntu:~/app$ export ISTIO_VERSION=1.12.0
 root@VM-4-4-ubuntu:~/app# curl -L https://istio.io/downloadIstio | sh -
@@ -69,7 +68,7 @@ istio-ingressgateway-579b8b4bf4-ppwd4   1/1     Running   0          5m6s
 istiod-7f67886588-5m28r                 1/1     Running   0          7m28s
 ```
 
-2. 在新的namespace中创建httpserver的pod和service
+### STEP2:在新的namespace中创建httpserver的pod和service
 ```sh
 ubuntu@VM-4-4-ubuntu:~$ k create ns istio-demo
 namespace/istio-demo created
@@ -104,7 +103,8 @@ httpserver   ClusterIP   10.108.170.227   <none>        80/TCP    6s
 ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module12/ex12$ curl 10.108.170.227
 <html h1>Welcome to cncamp...</html>
 ```
-创建istio网关
+
+### STEP3:创建istio网关,即创建virtualservice和getway，实现七层路由
 ```sh
 ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module12/ex12$ k create -f istio-specs-http.yaml -n istio-demo
 virtualservice.networking.istio.io/httpserver created
@@ -120,12 +120,33 @@ istiod                 ClusterIP      10.104.233.69   <none>        15010/TCP,15
 ubuntu@VM-4-4-ubuntu:~$ curl -H "Host: httpserver.cncamp.io" http://10.99.244.113
 <html h1>Welcome to cncamp...</html>
 ```
-
-### Step1:如何实现安全保证——改造为https方式
+### STEP4:注入Sidecar
 ```sh
-ubuntu@VM-4-4-ubuntu:~$ kubectl label ns istio-demo istio-injection=enabled
+ubuntu@VM-4-4-ubuntu:~$ k label ns istio-demo istio-injection=enabled
 namespace/istio-demo labeled
 
+##删除pod，等待重建
+ubuntu@VM-4-4-ubuntu:~$ k get po -n istio-demo
+NAME                          READY   STATUS    RESTARTS   AGE
+httpserver-7d4bbb44f5-fjxrf   1/1     Running   0          9d
+httpserver-7d4bbb44f5-wxt77   1/1     Running   0          9d
+ubuntu@VM-4-4-ubuntu:~$ k get rs -n istio-demo
+NAME                    DESIRED   CURRENT   READY   AGE
+httpserver-7d4bbb44f5   2         2         2       9d
+ubuntu@VM-4-4-ubuntu:~$ k delete rs httpserver-7d4bbb44f5 -n istio-demo
+replicaset.apps "httpserver-7d4bbb44f5" deleted
+## 观察此时每个pod中会有两个容器，即已经注入了Sidecar
+ubuntu@VM-4-4-ubuntu:~$ k get rs -n istio-demo
+NAME                    DESIRED   CURRENT   READY   AGE
+httpserver-7d4bbb44f5   2         2         2       56s
+ubuntu@VM-4-4-ubuntu:~$ k get po -n istio-demo
+NAME                          READY   STATUS    RESTARTS   AGE
+httpserver-7d4bbb44f5-npvvj   2/2     Running   0          57s
+httpserver-7d4bbb44f5-rjzp4   2/2     Running   0          57s
+```
+
+### STEP5:实现安全保证（签发证书，通过https访问）
+```sh
 ubuntu@VM-4-4-ubuntu:~/go/src/github.com/zhihai-tu/cncamp/homework/module12/ex12$ openssl req -x509 -sha256 -nodes -days 365 -newkey rsa:2048 -subj '/O=cncamp Inc./CN=*.cncamp.io' -keyout cncamp.io.key -out cncamp.io.crt
 Generating a RSA private key
 ......................................+++++
@@ -141,6 +162,7 @@ gateway.networking.istio.io/httpsserver created
 ```
 测试
 ```sh
+ubuntu@VM-4-4-ubuntu:~$ export INGRESS_IP=10.99.244.113
 ubuntu@VM-4-4-ubuntu:~$ curl --resolve httpsserver.cncamp.io:443:$INGRESS_IP https://httpsserver.cncamp.io/healthz -v -k
 * Added httpsserver.cncamp.io:443:10.99.244.113 to DNS cache
 * Hostname httpsserver.cncamp.io was found in DNS cache
@@ -191,3 +213,4 @@ ubuntu@VM-4-4-ubuntu:~$ curl --resolve httpsserver.cncamp.io:443:$INGRESS_IP htt
 * Connection #0 to host httpsserver.cncamp.io left intact
 <html h1>system is working... httpcode: 200 </html>
 ```
+
